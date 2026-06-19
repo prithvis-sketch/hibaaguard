@@ -1,0 +1,2092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIPAAGuard – HIPAA Compliance Scanner for U.S. Healthcare</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --purple: #4F35D2;
+    --purple-light: #6B52E0;
+    --purple-dark: #3A26B0;
+    --purple-bg: #F0EEFF;
+    --purple-mid: #7C5FE8;
+    --black: #0D0D0D;
+    --gray: #5A5A72;
+    --gray-light: #F5F5FA;
+    --white: #FFFFFF;
+    --red: #E53E3E;
+    --red-light: #FFF5F5;
+    --yellow: #D69E2E;
+    --yellow-light: #FFFFF0;
+    --green: #38A169;
+    --green-light: #F0FFF4;
+    --border: #E2E0F0;
+    --card-shadow: 0 4px 20px rgba(79,53,210,0.08);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--white);
+    color: var(--black);
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo-wrap { display: flex; align-items: center; gap: 10px; }
+
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: var(--purple);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 22px; height: 22px; fill: white; }
+
+  .logo-text { line-height: 1.2; }
+  .logo-text .brand { font-size: 18px; font-weight: 800; }
+  .logo-text .brand span { color: var(--purple); }
+  .logo-text .sub { font-size: 10px; color: var(--gray); font-weight: 500; }
+
+  .hamburger {
+    width: 36px; height: 36px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 5px;
+    cursor: pointer; border: none; background: none;
+    border-radius: 6px; transition: background 0.2s;
+  }
+  .hamburger:hover { background: var(--gray-light); }
+  .hamburger span {
+    display: block; width: 22px; height: 2px;
+    background: var(--black); border-radius: 2px;
+    transition: transform 0.3s, opacity 0.3s;
+  }
+  .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; }
+  .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  /* ── SIDE DRAWER ── */
+  .drawer-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .drawer-overlay.open { opacity: 1; pointer-events: all; }
+
+  .drawer {
+    position: fixed; top: 0; right: -100%;
+    width: min(380px, 92vw); height: 100%;
+    background: var(--white);
+    z-index: 300;
+    overflow-y: auto;
+    transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -4px 0 30px rgba(0,0,0,0.15);
+  }
+  .drawer.open { right: 0; }
+
+  .drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--purple);
+    color: white;
+  }
+  .drawer-header h2 { font-size: 17px; font-weight: 700; }
+  .drawer-close {
+    width: 32px; height: 32px;
+    border: none; background: rgba(255,255,255,0.2);
+    color: white; border-radius: 50%;
+    font-size: 18px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .drawer-close:hover { background: rgba(255,255,255,0.35); }
+
+  .drawer-body { padding: 24px 20px; }
+
+  .drawer-section { margin-bottom: 32px; }
+  .drawer-section h3 {
+    font-size: 14px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--purple);
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--purple-bg);
+  }
+  .drawer-section p { font-size: 14px; line-height: 1.7; color: var(--gray); }
+  .drawer-section ul { list-style: none; margin-top: 10px; }
+  .drawer-section ul li {
+    font-size: 14px; color: var(--gray);
+    padding: 6px 0; display: flex; gap: 8px; align-items: flex-start;
+    line-height: 1.5;
+  }
+  .drawer-section ul li::before {
+    content: '•'; color: var(--purple); font-weight: 900; margin-top: 1px;
+  }
+
+  .drawer-badge {
+    display: inline-block; background: var(--purple-bg);
+    color: var(--purple); font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px; margin-bottom: 10px;
+  }
+
+  .step-list { margin-top: 10px; }
+  .step-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 10px 0; border-bottom: 1px solid var(--gray-light);
+  }
+  .step-item:last-child { border-bottom: none; }
+  .step-num {
+    width: 26px; height: 26px; min-width: 26px;
+    background: var(--purple); color: white;
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 12px; font-weight: 700;
+  }
+  .step-content strong { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .step-content span { font-size: 13px; color: var(--gray); line-height: 1.5; }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center;
+    padding: 44px 20px 32px;
+    background: linear-gradient(180deg, var(--purple-bg) 0%, var(--white) 100%);
+  }
+
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--purple-bg); color: var(--purple);
+    font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 5px 12px; border-radius: 20px; margin-bottom: 18px;
+    text-transform: uppercase; line-height: 1;
+  }
+  .hero-eyebrow svg { width: 12px; height: 12px; stroke: var(--purple); fill: none; flex-shrink: 0; display: block; }
+
+  .hero h1 {
+    font-size: 30px; font-weight: 900; line-height: 1.2;
+    color: var(--black); margin-bottom: 14px;
+  }
+  .hero h1 .accent { color: var(--purple); }
+
+  .hero p {
+    font-size: 15px; color: var(--gray); line-height: 1.7;
+    max-width: 360px; margin: 0 auto 28px;
+  }
+
+  .hero-cta-group {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .cta-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    background: var(--purple);
+    color: white; border: none; border-radius: 12px;
+    padding: 16px 28px; font-size: 16px; font-weight: 700;
+    cursor: pointer; text-decoration: none;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 16px rgba(79,53,210,0.3);
+    width: 100%; max-width: 340px;
+  }
+  .cta-btn:hover { background: var(--purple-dark); box-shadow: 0 6px 24px rgba(79,53,210,0.4); }
+  .cta-btn:active { transform: scale(0.98); }
+  .cta-btn svg { width: 18px; height: 18px; stroke: white; fill: none; }
+
+  .cta-btn.secondary {
+    background: white; color: var(--purple);
+    border: 2px solid var(--purple);
+    box-shadow: none;
+    font-size: 14px; padding: 13px 24px;
+  }
+  .cta-btn.secondary:hover { background: var(--purple-bg); box-shadow: none; }
+  .cta-btn.secondary svg { stroke: var(--purple); }
+
+  .cta-microcopy {
+    display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+    font-size: 12px; color: var(--gray); font-weight: 500;
+  }
+  .cta-microcopy span { display: flex; align-items: center; gap: 4px; }
+  .cta-microcopy span::before { content: '✓'; color: var(--green); font-weight: 700; }
+
+  /* ── SAMPLE REPORT DASHBOARD ── */
+  .report-dashboard {
+    margin: 32px 20px 0;
+    max-width: 480px;
+    margin-left: auto; margin-right: auto;
+  }
+
+  .dashboard-card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(79,53,210,0.12);
+  }
+
+  .dashboard-header {
+    background: linear-gradient(135deg, #2D1B6B 0%, #4F35D2 60%, #6B52E0 100%);
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .dashboard-header-left { display: flex; align-items: center; gap: 10px; }
+  .dashboard-header-icon {
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dashboard-header-icon svg { width: 18px; height: 18px; stroke: white; fill: none; }
+  .dashboard-header h4 { font-size: 14px; font-weight: 700; color: white; }
+  .dashboard-header p { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 1px; }
+  .dashboard-status-pill {
+    background: rgba(255,255,255,0.15);
+    color: white; font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #F6AD55; }
+  .status-dot.red { background: #FC8181; }
+  .status-dot.green { background: #68D391; }
+
+  .dashboard-score-row {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 1px; background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .score-cell {
+    background: var(--white);
+    padding: 14px 16px;
+  }
+  .score-cell .label { font-size: 10px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .score-cell .value { font-size: 24px; font-weight: 900; line-height: 1; }
+  .score-cell .value.red { color: var(--red); }
+  .score-cell .value.yellow { color: var(--yellow); }
+  .score-cell .value.green { color: var(--green); }
+  .score-cell .value.purple { color: var(--purple); }
+  .score-cell .sub-val { font-size: 11px; color: var(--gray); margin-top: 3px; }
+
+  .dashboard-alerts {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .alerts-label {
+    font-size: 11px; font-weight: 700; color: var(--gray);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+  .alert-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 10px; border-radius: 10px;
+    margin-bottom: 6px; background: var(--gray-light);
+  }
+  .alert-item:last-child { margin-bottom: 0; }
+  .alert-item.critical { background: var(--red-light); }
+  .alert-item.warning { background: var(--yellow-light); }
+  .alert-item.info { background: var(--purple-bg); }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; min-width: 8px; margin-top: 4px; }
+  .alert-dot.critical { background: var(--red); }
+  .alert-dot.warning { background: var(--yellow); }
+  .alert-dot.info { background: var(--purple); }
+  .alert-content { flex: 1; }
+  .alert-content strong { font-size: 12px; font-weight: 700; color: var(--black); display: block; }
+  .alert-content span { font-size: 11px; color: var(--gray); }
+  .alert-time { font-size: 10px; color: var(--gray); white-space: nowrap; }
+
+  .dashboard-metrics {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .metric-cell {
+    background: var(--white); padding: 12px 8px; text-align: center;
+  }
+  .metric-cell .metric-icon { font-size: 18px; margin-bottom: 4px; }
+  .metric-cell .metric-val { font-size: 16px; font-weight: 800; color: var(--black); }
+  .metric-cell .metric-val.red { color: var(--red); }
+  .metric-cell .metric-val.yellow { color: var(--yellow); }
+  .metric-cell .metric-val.green { color: var(--green); }
+  .metric-cell .metric-lbl { font-size: 9px; color: var(--gray); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+
+  .dashboard-fixes {
+    padding: 12px 16px;
+  }
+  .fixes-label {
+    font-size: 11px; font-weight: 700; color: var(--gray);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+  .fix-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 0; border-bottom: 1px solid var(--gray-light);
+    font-size: 12px;
+  }
+  .fix-item:last-child { border-bottom: none; }
+  .fix-item svg { width: 14px; height: 14px; stroke: var(--purple); fill: none; min-width: 14px; }
+  .fix-item span { color: var(--black); font-weight: 500; flex: 1; }
+  .fix-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+  }
+  .fix-badge.high { background: var(--red-light); color: var(--red); }
+  .fix-badge.med { background: var(--yellow-light); color: var(--yellow); }
+
+  .dashboard-footer {
+    background: var(--gray-light);
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .dashboard-footer span { font-size: 11px; color: var(--gray); }
+  .dashboard-footer strong { font-size: 11px; color: var(--purple); font-weight: 700; }
+
+  /* ── INTERACTIVE DEMO ── */
+  .demo-section {
+    padding: 40px 20px;
+    text-align: center;
+  }
+  .section-eyebrow {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--purple-bg); color: var(--purple);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    padding: 4px 12px; border-radius: 20px; margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .section-eyebrow svg { width: 11px; height: 11px; stroke: var(--purple); fill: none; }
+
+  .demo-section h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .demo-section h2 span { color: var(--purple); }
+  .demo-section > p { font-size: 14px; color: var(--gray); line-height: 1.6; margin-bottom: 28px; max-width: 360px; margin-left: auto; margin-right: auto; }
+
+  .demo-box {
+    background: var(--gray-light);
+    border: 2px dashed var(--border);
+    border-radius: 20px;
+    padding: 32px 20px;
+    max-width: 420px; margin: 0 auto 24px;
+    transition: border-color 0.3s, background 0.3s;
+  }
+  .demo-box.scanning {
+    border-color: var(--purple);
+    border-style: solid;
+    background: var(--purple-bg);
+  }
+  .demo-box.done {
+    border-color: var(--green);
+    border-style: solid;
+    background: var(--green-light);
+  }
+
+  .demo-idle { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .demo-idle svg { width: 40px; height: 40px; stroke: var(--gray); fill: none; }
+  .demo-idle p { font-size: 13px; color: var(--gray); }
+
+  .demo-progress { display: none; flex-direction: column; gap: 12px; }
+  .demo-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 12px;
+    background: white;
+    border: 1px solid var(--border);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .demo-step.active { border-color: var(--purple); box-shadow: 0 2px 12px rgba(79,53,210,0.1); }
+  .demo-step.complete { border-color: var(--green); }
+  .demo-step-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--gray-light); min-width: 32px;
+    transition: background 0.3s;
+  }
+  .demo-step.active .demo-step-icon { background: var(--purple-bg); }
+  .demo-step.complete .demo-step-icon { background: var(--green-light); }
+  .demo-step-icon svg { width: 16px; height: 16px; stroke: var(--gray); fill: none; }
+  .demo-step.active .demo-step-icon svg { stroke: var(--purple); }
+  .demo-step.complete .demo-step-icon svg { stroke: var(--green); }
+  .demo-step-text { flex: 1; text-align: left; }
+  .demo-step-text strong { font-size: 13px; font-weight: 700; display: block; }
+  .demo-step-text span { font-size: 11px; color: var(--gray); }
+  .demo-step-status { font-size: 11px; font-weight: 600; }
+  .demo-step-status.pending { color: var(--gray); }
+  .demo-step-status.active { color: var(--purple); }
+  .demo-step-status.done { color: var(--green); }
+
+  .demo-spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--purple-bg);
+    border-top-color: var(--purple);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .demo-complete { display: none; flex-direction: column; align-items: center; gap: 10px; }
+  .demo-complete svg { width: 36px; height: 36px; stroke: var(--green); fill: none; }
+  .demo-complete h4 { font-size: 16px; font-weight: 800; color: var(--black); }
+  .demo-complete p { font-size: 13px; color: var(--gray); }
+
+  /* ── TRUST SECTION ── */
+  .trust-section {
+    padding: 40px 20px;
+    background: var(--gray-light);
+  }
+  .trust-section .section-header { text-align: center; margin-bottom: 28px; }
+  .trust-section h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .trust-section h2 span { color: var(--purple); }
+  .trust-section .section-sub { font-size: 14px; color: var(--gray); line-height: 1.6; }
+
+  .trust-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; max-width: 480px; margin: 0 auto;
+  }
+  .trust-card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 16px;
+  }
+  .trust-card-icon {
+    width: 44px; height: 44px;
+    background: var(--purple-bg);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+  }
+  .trust-card-icon svg { width: 22px; height: 22px; stroke: var(--purple); fill: none; }
+  .trust-card h4 { font-size: 14px; font-weight: 800; margin-bottom: 6px; }
+  .trust-card p { font-size: 12px; color: var(--gray); line-height: 1.6; }
+
+  /* ── CONTENT RISK SECTION ── */
+  .content-section {
+    padding: 40px 20px;
+  }
+  .content-section .section-header { text-align: center; margin-bottom: 28px; }
+  .content-section h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .content-section h2 span { color: var(--purple); }
+  .content-section .section-sub { font-size: 14px; color: var(--gray); line-height: 1.6; max-width: 360px; margin: 0 auto; }
+
+  .content-cards {
+    display: grid; grid-template-columns: 1fr;
+    gap: 12px; max-width: 480px; margin: 0 auto;
+  }
+  .content-card {
+    display: flex; gap: 14px;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 18px 16px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .content-card:hover { border-color: var(--purple-light); box-shadow: var(--card-shadow); }
+  .content-card-icon {
+    width: 44px; height: 44px; min-width: 44px;
+    background: var(--purple-bg); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .content-card-icon svg { width: 22px; height: 22px; stroke: var(--purple); fill: none; }
+  .content-card-body h4 { font-size: 14px; font-weight: 800; margin-bottom: 5px; }
+  .content-card-body p { font-size: 13px; color: var(--gray); line-height: 1.6; }
+
+  /* ── HOW IT WORKS ── */
+  .how-section {
+    padding: 40px 20px;
+    background: var(--gray-light);
+  }
+  .how-section .section-header { text-align: center; margin-bottom: 28px; }
+  .how-section h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .how-section h2 span { color: var(--purple); }
+
+  .how-card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 24px 20px;
+    max-width: 480px; margin: 0 auto;
+  }
+
+  .how-step {
+    display: flex; gap: 14px; align-items: flex-start;
+    margin-bottom: 16px;
+  }
+  .how-step:last-of-type { margin-bottom: 0; }
+
+  .how-icon {
+    width: 48px; height: 48px; min-width: 48px;
+    background: var(--purple);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .how-icon svg { width: 22px; height: 22px; stroke: white; fill: none; }
+
+  .how-connector {
+    width: 2px; height: 16px; background: var(--purple-bg);
+    margin-left: 23px; margin-top: 4px;
+  }
+
+  .how-text strong { font-size: 16px; font-weight: 700; display: block; margin-bottom: 3px; }
+  .how-text span { font-size: 13px; color: var(--gray); line-height: 1.5; }
+
+  .how-badges {
+    display: flex; justify-content: center; gap: 10px;
+    margin-top: 20px; padding-top: 16px;
+    border-top: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .how-badge {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; color: var(--gray);
+    background: var(--gray-light); padding: 5px 12px; border-radius: 20px;
+  }
+  .how-badge svg { width: 13px; height: 13px; stroke: var(--purple); fill: none; }
+
+  /* ── DETECTS ── */
+  .detects {
+    padding: 40px 20px;
+    text-align: center;
+  }
+  .detects h2 { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+  .detects h2 span { color: var(--purple); }
+  .detects .section-sub { font-size: 14px; color: var(--gray); margin-bottom: 28px; }
+  .detect-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px; max-width: 380px; margin: 0 auto;
+  }
+  .detect-item {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 16px 8px;
+    background: var(--gray-light);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  }
+  .detect-item:hover {
+    border-color: var(--purple-light);
+    box-shadow: 0 6px 16px rgba(79,53,210,0.12);
+    background: var(--white);
+  }
+  .detect-item:active, .detect-item.tapped { transform: scale(0.93); }
+  .detect-item svg { width: 28px; height: 28px; stroke: var(--purple); fill: none; transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .detect-item.tapped svg { transform: scale(1.35) rotate(-6deg); }
+  .detect-item span { font-size: 12px; font-weight: 600; color: var(--gray); }
+  .detect-tap-hint { font-size: 12px; color: var(--gray); margin-top: 16px; text-align: center; }
+
+  /* ── DETECT POPUP ── */
+  .detect-popup-overlay {
+    position: fixed; inset: 0;
+    background: rgba(13,13,13,0.55);
+    z-index: 400;
+    display: flex; align-items: flex-end; justify-content: center;
+    padding: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+  .detect-popup-overlay.open { opacity: 1; pointer-events: all; }
+
+  .detect-popup {
+    background: var(--white);
+    border-radius: 24px 24px 0 0;
+    padding: 28px 24px 40px;
+    max-width: 480px; width: 100%;
+    position: relative;
+    text-align: left;
+    transform: translateY(40px);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+  }
+  .detect-popup-overlay.open .detect-popup {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .detect-popup-handle {
+    width: 36px; height: 4px; background: var(--border);
+    border-radius: 2px; margin: 0 auto 20px;
+  }
+
+  .detect-popup-close {
+    position: absolute; top: 20px; right: 20px;
+    width: 30px; height: 30px;
+    border: none; background: var(--gray-light);
+    border-radius: 50%; cursor: pointer;
+    font-size: 14px; color: var(--gray);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .detect-popup-close:hover { background: var(--border); }
+
+  .detect-popup-icon {
+    width: 56px; height: 56px;
+    background: var(--purple-bg);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+    animation: popupIconIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .detect-popup-icon svg { width: 28px; height: 28px; stroke: var(--purple); fill: none; }
+
+  @keyframes popupIconIn {
+    from { transform: scale(0) rotate(-20deg); opacity: 0; }
+    to { transform: scale(1) rotate(0); opacity: 1; }
+  }
+
+  .detect-popup h3 { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+
+  .popup-section-label {
+    font-size: 11px; font-weight: 700; color: var(--purple);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin: 16px 0 8px;
+  }
+
+  .detect-popup-why { font-size: 14px; color: var(--gray); line-height: 1.7; }
+
+  .detect-popup-violations {
+    background: var(--red-light); border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .detect-popup-violation-item {
+    font-size: 13px; color: #C53030;
+    padding: 4px 0; display: flex; gap: 8px; align-items: flex-start;
+  }
+  .detect-popup-violation-item::before { content: '⚠'; font-size: 11px; margin-top: 1px; }
+
+  .detect-popup-method {
+    background: var(--purple-bg); border-radius: 10px;
+    padding: 12px 14px; font-size: 13px; color: var(--gray); line-height: 1.6;
+  }
+
+  .detect-popup-fixes { display: flex; flex-direction: column; gap: 8px; }
+  .detect-popup-fix {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 13px; color: var(--black);
+  }
+  .detect-popup-fix-icon {
+    width: 20px; height: 20px; min-width: 20px; margin-top: 1px;
+    background: var(--green-light); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .detect-popup-fix-icon svg { width: 12px; height: 12px; stroke: var(--green); fill: none; }
+
+  .detect-popup-examples {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .detect-popup-examples span {
+    background: var(--purple-bg); color: var(--purple);
+    font-size: 11px; font-weight: 600;
+    padding: 5px 10px; border-radius: 20px;
+  }
+
+  /* ── COMPLIANCE SECTION ── */
+  .compliance-section {
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #1a0e40 0%, #2D1B6B 50%, #4F35D2 100%);
+    text-align: center;
+  }
+  .compliance-section h2 { font-size: 22px; font-weight: 800; color: white; margin-bottom: 8px; }
+  .compliance-section .section-sub { font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 28px; line-height: 1.6; max-width: 360px; margin-left: auto; margin-right: auto; }
+
+  .compliance-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; max-width: 480px; margin: 0 auto 28px;
+  }
+  .compliance-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px; padding: 18px 14px; text-align: left;
+  }
+  .compliance-card-icon { font-size: 24px; margin-bottom: 10px; }
+  .compliance-card h4 { font-size: 13px; font-weight: 800; color: white; margin-bottom: 6px; }
+  .compliance-card p { font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.6; }
+  .compliance-card .stat { font-size: 20px; font-weight: 900; color: #F6AD55; margin-bottom: 4px; }
+
+  /* ── SECURITY SECTION ── */
+  .security-section {
+    padding: 40px 20px;
+    background: var(--gray-light);
+  }
+  .security-section .section-header { text-align: center; margin-bottom: 28px; }
+  .security-section h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .security-section h2 span { color: var(--purple); }
+
+  .security-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; max-width: 480px; margin: 0 auto;
+  }
+  .security-card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 18px 14px;
+  }
+  .security-card-icon {
+    width: 40px; height: 40px;
+    background: var(--purple-bg); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+  }
+  .security-card-icon svg { width: 20px; height: 20px; stroke: var(--purple); fill: none; }
+  .security-card h4 { font-size: 13px; font-weight: 800; margin-bottom: 5px; }
+  .security-card p { font-size: 12px; color: var(--gray); line-height: 1.6; }
+
+  /* ── FAQ ── */
+  .faq-section {
+    padding: 40px 20px;
+  }
+  .faq-section .section-header { text-align: center; margin-bottom: 28px; }
+  .faq-section h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .faq-section h2 span { color: var(--purple); }
+
+  .faq-list { max-width: 480px; margin: 0 auto; }
+  .faq-item {
+    border: 1.5px solid var(--border);
+    border-radius: 14px; margin-bottom: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .faq-item.open { border-color: var(--purple); }
+  .faq-q {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 16px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .faq-q span { font-size: 14px; font-weight: 700; flex: 1; line-height: 1.4; }
+  .faq-chevron {
+    width: 20px; height: 20px; min-width: 20px;
+    stroke: var(--gray); fill: none;
+    transition: transform 0.3s;
+  }
+  .faq-item.open .faq-chevron { transform: rotate(180deg); stroke: var(--purple); }
+  .faq-a {
+    display: none;
+    padding: 0 16px 16px;
+    font-size: 13px; color: var(--gray); line-height: 1.7;
+  }
+  .faq-item.open .faq-a { display: block; }
+
+  /* ── FORM SECTION ── */
+  .form-section {
+    background: var(--purple-bg);
+    padding: 44px 20px;
+    text-align: center;
+  }
+
+  .form-icon {
+    width: 56px; height: 56px;
+    background: var(--purple);
+    border-radius: 16px;
+    margin: 0 auto 18px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .form-icon svg { width: 26px; height: 26px; stroke: white; fill: none; }
+
+  .form-section h2 {
+    font-size: 24px; font-weight: 900; line-height: 1.25;
+    margin-bottom: 8px;
+  }
+  .form-section h2 span { color: var(--purple); }
+  .form-section .sub-copy { font-size: 14px; color: var(--gray); margin-bottom: 28px; }
+
+  .form-grid {
+    display: grid; grid-template-columns: 1fr;
+    gap: 12px; max-width: 480px; margin: 0 auto;
+  }
+
+  .field {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 14px;
+    height: 50px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field:focus-within { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(79,53,210,0.1); }
+  .field svg { width: 16px; height: 16px; stroke: var(--gray); fill: none; min-width: 16px; }
+  .field input, .field select {
+    flex: 1; border: none; outline: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px; color: var(--black);
+    background: transparent;
+  }
+  .field select { appearance: none; cursor: pointer; color: var(--gray); }
+  .field input::placeholder { color: #ABABC0; }
+
+  .field-flag { display: flex; align-items: center; gap: 4px; }
+  .flag { font-size: 16px; }
+
+  .form-submit-btn {
+    width: 100%; max-width: 480px;
+    margin: 20px auto 0;
+    display: flex;
+    background: var(--purple);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 18px 24px;
+    font-size: 16px; font-weight: 700;
+    cursor: pointer;
+    align-items: center; justify-content: center; gap: 10px;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(79,53,210,0.3);
+  }
+  .form-submit-btn:hover { background: var(--purple-dark); box-shadow: 0 6px 28px rgba(79,53,210,0.4); }
+  .form-submit-btn:active { transform: scale(0.98); }
+  .form-submit-btn svg { width: 18px; height: 18px; stroke: white; fill: none; }
+
+  .form-microcopy {
+    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+    font-size: 12px; color: var(--gray); font-weight: 500;
+    margin-top: 14px;
+  }
+  .form-microcopy span { display: flex; align-items: center; gap: 4px; }
+  .form-microcopy span::before { content: '✓'; color: var(--green); font-weight: 700; }
+
+  .privacy-note {
+    font-size: 12px; color: var(--gray);
+    margin-top: 14px; display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .privacy-note svg { width: 12px; height: 12px; stroke: var(--gray); fill: none; }
+
+  .footer-flag {
+    margin-top: 12px; font-size: 13px;
+    font-weight: 700; color: var(--black);
+    text-align: center;
+  }
+
+  /* ── STICKY BOTTOM CTA ── */
+  .sticky-cta {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--white);
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+    z-index: 90;
+    display: none;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  }
+  .sticky-cta.visible { display: block; }
+  .sticky-cta-btn {
+    width: 100%; background: var(--purple); color: white;
+    border: none; border-radius: 12px;
+    padding: 15px 24px; font-size: 15px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.2s;
+  }
+  .sticky-cta-btn svg { width: 16px; height: 16px; stroke: white; fill: none; }
+  .sticky-cta-btn:hover { background: var(--purple-dark); }
+
+  /* ── SUCCESS PAGE ── */
+  #success-page {
+    display: none;
+    min-height: 100vh;
+    align-items: center; justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 40px 24px;
+    background: var(--white);
+  }
+  #success-page.show { display: flex; }
+  #main-content.hide { display: none; }
+
+  .success-icon {
+    width: 80px; height: 80px;
+    background: var(--purple-bg); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px; margin-left: auto; margin-right: auto;
+  }
+  .success-icon svg { width: 38px; height: 38px; stroke: var(--purple); fill: none; }
+
+  .success-badge {
+    background: var(--purple-bg); color: var(--purple);
+    font-size: 12px; font-weight: 700; padding: 5px 14px; border-radius: 20px;
+    display: inline-block; margin-bottom: 20px;
+  }
+
+  #success-page h2 {
+    font-size: 26px; font-weight: 900; margin-bottom: 14px; line-height: 1.25;
+  }
+  #success-page h2 span { color: var(--purple); }
+  #success-page > p {
+    font-size: 15px; color: var(--gray); line-height: 1.7;
+    max-width: 360px; margin: 0 auto 28px;
+  }
+
+  .redirect-bar {
+    width: 240px; height: 4px; background: var(--gray-light);
+    border-radius: 2px; overflow: hidden; margin: 0 auto 12px;
+  }
+  .redirect-fill {
+    height: 100%; width: 0; background: var(--purple);
+    border-radius: 2px; animation: fillBar 3s linear forwards;
+  }
+  @keyframes fillBar { to { width: 100%; } }
+  .redirect-text { font-size: 13px; color: var(--gray); margin-bottom: 28px; }
+
+  .success-details {
+    background: var(--gray-light); border-radius: 18px;
+    padding: 20px; max-width: 360px; width: 100%; text-align: left;
+  }
+  .success-details h4 { font-size: 14px; font-weight: 800; margin-bottom: 14px; }
+  .detail-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 13px; color: var(--gray); line-height: 1.5;
+    padding: 6px 0;
+  }
+  .detail-row svg { width: 16px; height: 16px; stroke: var(--purple); fill: none; min-width: 16px; margin-top: 1px; }
+
+  /* ── RESPONSIVE DESKTOP ── */
+  @media (min-width: 600px) {
+    .hero h1 { font-size: 38px; }
+    .hero { padding: 64px 32px 40px; }
+    .trust-grid { grid-template-columns: repeat(4, 1fr); }
+    .compliance-grid { grid-template-columns: repeat(4, 1fr); }
+    .content-cards { grid-template-columns: 1fr 1fr; }
+    .hero-cta-group { flex-direction: row; justify-content: center; }
+    .cta-btn { width: auto; max-width: none; }
+    .sticky-cta { display: none !important; }
+    .demo-box { padding: 36px 28px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── DRAWER OVERLAY ── -->
+<div class="drawer-overlay" id="drawer-overlay"></div>
+
+<!-- ── SIDE DRAWER ── -->
+<div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="About HIPAAGuard">
+  <div class="drawer-header">
+    <h2>About HIPAAGuard</h2>
+    <button class="drawer-close" id="drawer-close" aria-label="Close menu">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-section">
+      <div class="drawer-badge">What We Do</div>
+      <h3>HIPAA Video Scanning</h3>
+      <p>HIPAAGuard analyzes healthcare video content for HIPAA compliance risks before you publish — protecting your practice from accidental PHI exposure across TikTok, Instagram Reels, YouTube Shorts, and any short-form video platform.</p>
+    </div>
+    <div class="drawer-section">
+      <h3>Who It's For</h3>
+      <ul>
+        <li>Physicians, surgeons, and specialists creating educational content</li>
+        <li>Dentists and orthodontists sharing procedure videos</li>
+        <li>Med spas and aesthetic practices posting treatment clips</li>
+        <li>Healthcare marketing teams managing clinical social media</li>
+        <li>Clinics reviewing patient-facing video content at scale</li>
+      </ul>
+    </div>
+    <div class="drawer-section">
+      <h3>How It Works</h3>
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <strong>Upload Your Video</strong>
+            <span>Securely upload any short-form healthcare video directly in the platform.</span>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <strong>Automated Scan</strong>
+            <span>Our engine scans faces, audio, on-screen text, records, and screens frame by frame.</span>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <strong>Risk Report</strong>
+            <span>Receive a timestamped compliance report with a risk score and specific recommended fixes.</span>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <strong>Publish With Confidence</strong>
+            <span>Address flagged items and post knowing your content is HIPAA-aware.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <h3>Privacy Promise</h3>
+      <p>Uploaded videos are processed in isolated, encrypted environments. We do not train on your content. Files are purged after report generation. HIPAAGuard is designed specifically for healthcare privacy workflows.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="logo-wrap">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+    </div>
+    <div class="logo-text">
+      <div class="brand">HIPAA<span>Guard</span></div>
+      <div class="sub">Compliance Scanner</div>
+    </div>
+  </div>
+  <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ── MAIN CONTENT ── -->
+<div id="main-content">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-eyebrow">
+      <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+      HIPAA Compliance for Healthcare Video
+    </div>
+    <h1>Does Your Healthcare<br>Video Have <span class="accent">Hidden Risks?</span></h1>
+    <p>Upload your video. Get a full HIPAA compliance report in minutes — faces, audio, PHI, on-screen text, and more.</p>
+
+    <div class="hero-cta-group">
+      <button class="cta-btn" onclick="document.getElementById('lead-form').scrollIntoView({behavior:'smooth'})">
+        <svg viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Get My Free Compliance Report
+      </button>
+      <button class="cta-btn secondary" onclick="startDemo()">
+        <svg viewBox="0 0 24 24" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start Sample Scan
+      </button>
+    </div>
+    <div class="cta-microcopy">
+      <span>No credit card required</span>
+      <span>First scan free</span>
+      <span>Private &amp; secure</span>
+    </div>
+  </section>
+
+  <!-- SAMPLE REPORT DASHBOARD -->
+  <section style="padding: 0 20px 40px; background: linear-gradient(180deg, var(--white) 0%, var(--gray-light) 100%);">
+    <div style="text-align:center; margin-bottom: 20px;">
+      <div class="section-eyebrow">
+        <svg viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        Sample HIPAA Risk Report
+      </div>
+      <p style="font-size:13px; color:var(--gray); max-width:300px; margin:6px auto 0;">This is what your report looks like. Every flag, timestamped and actionable.</p>
+    </div>
+    <div class="report-dashboard">
+      <div class="dashboard-card">
+        <div class="dashboard-header">
+          <div class="dashboard-header-left">
+            <div class="dashboard-header-icon">
+              <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+            </div>
+            <div>
+              <h4>HIPAAGuard Report</h4>
+              <p>@drsmith_dermatology · 0:42 clip</p>
+            </div>
+          </div>
+          <div class="dashboard-status-pill">
+            <span class="status-dot red"></span>
+            High Risk
+          </div>
+        </div>
+
+        <div class="dashboard-score-row">
+          <div class="score-cell">
+            <div class="label">Risk Score</div>
+            <div class="value red">74<span style="font-size:14px; font-weight:600">/100</span></div>
+            <div class="sub-val">High — Action Required</div>
+          </div>
+          <div class="score-cell">
+            <div class="label">Compliance Status</div>
+            <div class="value yellow" style="font-size:16px; padding-top:4px;">⚠ At Risk</div>
+            <div class="sub-val">7 violations found</div>
+          </div>
+        </div>
+
+        <div class="dashboard-alerts">
+          <div class="alerts-label">Timestamped Alerts</div>
+          <div class="alert-item critical">
+            <div class="alert-dot critical"></div>
+            <div class="alert-content">
+              <strong>Patient Face Detected</strong>
+              <span>Unblurred face visible in background — frame 0:08–0:11</span>
+            </div>
+            <div class="alert-time">0:08</div>
+          </div>
+          <div class="alert-item critical">
+            <div class="alert-dot critical"></div>
+            <div class="alert-content">
+              <strong>PHI Mention in Audio</strong>
+              <span>"Patient Johnson" spoken aloud — transcript line 4</span>
+            </div>
+            <div class="alert-time">0:17</div>
+          </div>
+          <div class="alert-item warning">
+            <div class="alert-dot warning"></div>
+            <div class="alert-content">
+              <strong>EHR Screen in Frame</strong>
+              <span>Patient record visible on monitor at background left</span>
+            </div>
+            <div class="alert-time">0:31</div>
+          </div>
+          <div class="alert-item info">
+            <div class="alert-dot info"></div>
+            <div class="alert-content">
+              <strong>Text Overlay Contains DOB</strong>
+              <span>Caption reads "DOB: 03/1987" — partially visible</span>
+            </div>
+            <div class="alert-time">0:38</div>
+          </div>
+        </div>
+
+        <div class="dashboard-metrics">
+          <div class="metric-cell">
+            <div class="metric-icon">👤</div>
+            <div class="metric-val red">3</div>
+            <div class="metric-lbl">Faces</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-icon">🔊</div>
+            <div class="metric-val yellow">2</div>
+            <div class="metric-lbl">PHI Audio</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-icon">📋</div>
+            <div class="metric-val red">1</div>
+            <div class="metric-lbl">Records</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-icon">📝</div>
+            <div class="metric-val yellow">1</div>
+            <div class="metric-lbl">Text Risk</div>
+          </div>
+        </div>
+
+        <div class="dashboard-fixes">
+          <div class="fixes-label">Recommended Fixes</div>
+          <div class="fix-item">
+            <svg viewBox="0 0 24 24" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Blur or crop background patient at 0:08–0:11</span>
+            <span class="fix-badge high">Critical</span>
+          </div>
+          <div class="fix-item">
+            <svg viewBox="0 0 24 24" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Mute or re-record audio at 0:17 — remove patient name</span>
+            <span class="fix-badge high">Critical</span>
+          </div>
+          <div class="fix-item">
+            <svg viewBox="0 0 24 24" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Reposition camera or cover EHR screen at 0:31</span>
+            <span class="fix-badge med">Medium</span>
+          </div>
+          <div class="fix-item">
+            <svg viewBox="0 0 24 24" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Remove or redact DOB text overlay at 0:38</span>
+            <span class="fix-badge med">Medium</span>
+          </div>
+        </div>
+
+        <div class="dashboard-footer">
+          <span>Scanned June 19, 2025 · 2m 14s</span>
+          <button onclick="document.getElementById('lead-form').scrollIntoView({behavior:'smooth'})" style="background:var(--purple);color:white;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:background 0.2s,transform 0.1s;box-shadow:0 2px 8px rgba(79,53,210,0.25);" onmouseover="this.style.background='var(--purple-dark)'" onmouseout="this.style.background='var(--purple)'" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">View Full Report →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE DEMO -->
+  <section class="demo-section" id="demo-section">
+    <div class="section-eyebrow">
+      <svg viewBox="0 0 24 24" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Interactive Demo
+    </div>
+    <h2>See How a <span>Scan Works</span></h2>
+    <p>Watch HIPAAGuard analyze a sample healthcare video in real time. Front-end demo — no video required.</p>
+
+    <div class="demo-box" id="demo-box">
+      <div class="demo-idle" id="demo-idle">
+        <svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p>Click below to start a sample scan</p>
+      </div>
+      <div class="demo-progress" id="demo-progress">
+        <div class="demo-step" id="step-upload">
+          <div class="demo-step-icon"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+          <div class="demo-step-text"><strong>Uploading Video</strong><span>dr_smith_tutorial.mp4 · 42s</span></div>
+          <span class="demo-step-status pending" id="status-upload">Pending</span>
+        </div>
+        <div class="demo-step" id="step-audio">
+          <div class="demo-step-icon"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
+          <div class="demo-step-text"><strong>Analyzing Audio</strong><span>Transcribing speech &amp; detecting PHI</span></div>
+          <span class="demo-step-status pending" id="status-audio">Pending</span>
+        </div>
+        <div class="demo-step" id="step-faces">
+          <div class="demo-step-icon"><svg viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+          <div class="demo-step-text"><strong>Scanning Faces</strong><span>Frame-by-frame patient face detection</span></div>
+          <span class="demo-step-status pending" id="status-faces">Pending</span>
+        </div>
+        <div class="demo-step" id="step-text">
+          <div class="demo-step-icon"><svg viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></div>
+          <div class="demo-step-text"><strong>Checking On-Screen Text</strong><span>Captions, overlays &amp; graphics</span></div>
+          <span class="demo-step-status pending" id="status-text">Pending</span>
+        </div>
+        <div class="demo-step" id="step-phi">
+          <div class="demo-step-icon"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <div class="demo-step-text"><strong>Detecting PHI</strong><span>Names, DOBs, record numbers, IDs</span></div>
+          <span class="demo-step-status pending" id="status-phi">Pending</span>
+        </div>
+        <div class="demo-step" id="step-report">
+          <div class="demo-step-icon"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg></div>
+          <div class="demo-step-text"><strong>Generating Report</strong><span>Risk score, violations, fixes</span></div>
+          <span class="demo-step-status pending" id="status-report">Pending</span>
+        </div>
+      </div>
+      <div class="demo-complete" id="demo-complete">
+        <svg viewBox="0 0 24 24" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        <h4>Scan Complete — 2m 14s</h4>
+        <p>7 violations found · Risk Score: 74/100</p>
+      </div>
+    </div>
+
+    <button class="cta-btn" style="max-width:320px; margin: 0 auto;" onclick="startDemo()" id="demo-btn">
+      <svg viewBox="0 0 24 24" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Start Sample Scan
+    </button>
+    <div style="margin-top:12px;">
+      <div class="cta-microcopy">
+        <span>No credit card required</span>
+        <span>First scan free</span>
+        <span>Private &amp; secure</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST SECTION -->
+  <section class="trust-section">
+    <div class="section-header">
+      <div class="section-eyebrow" style="display:inline-flex; margin-bottom:14px;">
+        <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+        Built for Healthcare
+      </div>
+      <h2>Why Doctors Trust <span>HIPAAGuard</span></h2>
+      <p class="section-sub" style="max-width:360px; margin: 8px auto 0;">Designed specifically for healthcare professionals who create video content and need HIPAA compliance they can rely on.</p>
+    </div>
+    <div class="trust-grid">
+      <div class="trust-card">
+        <div class="trust-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h4>Private Processing</h4>
+        <p>Videos are processed in isolated environments and purged immediately after report generation. We never store or train on your content.</p>
+      </div>
+      <div class="trust-card">
+        <div class="trust-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+        </div>
+        <h4>HIPAA-Focused Detection</h4>
+        <p>Built around the 18 HIPAA identifiers. Not a generic AI tool repurposed for healthcare — purpose-built for clinical content compliance.</p>
+      </div>
+      <div class="trust-card">
+        <div class="trust-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h4>Fast Reports</h4>
+        <p>Most scans complete in under 5 minutes. Get a full timestamped risk report before you post — not after a violation already happened.</p>
+      </div>
+      <div class="trust-card">
+        <div class="trust-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <h4>Built for Practices</h4>
+        <p>Designed for solo physicians, group practices, med spas, and dental offices — not enterprise IT teams. Simple, actionable, practical.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUILT FOR MODERN HEALTHCARE CONTENT -->
+  <section class="content-section">
+    <div class="section-header">
+      <div class="section-eyebrow" style="display:inline-flex; margin-bottom:14px;">
+        <svg viewBox="0 0 24 24" stroke-width="2"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.82v6.36a1 1 0 0 1-1.447.89L15 14M3 8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/></svg>
+        The Modern Healthcare Creator
+      </div>
+      <h2>Healthcare Professionals Are Creating <span>More Video Than Ever</span></h2>
+      <p class="section-sub">Doctors, dentists, and specialists publish thousands of videos to educate patients and grow their practices. But the same clinical environment that builds credibility can unintentionally expose protected health information.</p>
+    </div>
+    <div class="content-cards">
+      <div class="content-card">
+        <div class="content-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
+        </div>
+        <div class="content-card-body">
+          <h4>Social Media Videos</h4>
+          <p>TikTok, Instagram Reels, and YouTube Shorts filmed in clinical settings routinely capture patient faces, records, and PHI — often without anyone noticing until it's too late.</p>
+        </div>
+      </div>
+      <div class="content-card">
+        <div class="content-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        </div>
+        <div class="content-card-body">
+          <h4>Healthcare Professionals</h4>
+          <p>Physicians, dentists, surgeons, and med spa providers creating educational or marketing content face real HIPAA exposure risk — even with the best intentions.</p>
+        </div>
+      </div>
+      <div class="content-card">
+        <div class="content-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+        </div>
+        <div class="content-card-body">
+          <h4>HIPAA Risk Detection</h4>
+          <p>HIPAAGuard identifies the specific frames, timestamps, and content types that create compliance exposure — so you know exactly what to fix before publishing.</p>
+        </div>
+      </div>
+      <div class="content-card">
+        <div class="content-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <div class="content-card-body">
+          <h4>Actionable Reports</h4>
+          <p>Every risk comes with a specific timestamp, a description of what was detected, and a recommended fix — so your team knows exactly what to address.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-section">
+    <div class="section-header">
+      <div class="section-eyebrow" style="display:inline-flex; margin-bottom:14px;">
+        <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Process
+      </div>
+      <h2>From Upload to <span>Report in Minutes</span></h2>
+    </div>
+    <div class="how-card">
+      <div class="how-step">
+        <div>
+          <div class="how-icon">
+            <svg viewBox="0 0 24 24" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="how-connector"></div>
+        </div>
+        <div class="how-text">
+          <strong>Upload Your Video</strong>
+          <span>Drag and drop any short-form healthcare video — TikTok clips, Reels, YouTube Shorts, or raw recordings.</span>
+        </div>
+      </div>
+      <div class="how-step">
+        <div>
+          <div class="how-icon">
+            <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div class="how-connector"></div>
+        </div>
+        <div class="how-text">
+          <strong>Automated Compliance Scan</strong>
+          <span>HIPAAGuard scans every frame and second of audio — faces, text, PHI identifiers, on-screen records, and more.</span>
+        </div>
+      </div>
+      <div class="how-step">
+        <div>
+          <div class="how-icon">
+            <svg viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="how-connector"></div>
+        </div>
+        <div class="how-text">
+          <strong>Receive Your Risk Report</strong>
+          <span>Get a timestamped HIPAA risk report with a compliance score, flagged violations, and specific recommended fixes.</span>
+        </div>
+      </div>
+      <div class="how-step">
+        <div>
+          <div class="how-icon">
+            <svg viewBox="0 0 24 24" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+        </div>
+        <div class="how-text">
+          <strong>Address &amp; Publish</strong>
+          <span>Fix flagged items with confidence, then publish knowing your content has been reviewed for HIPAA exposure.</span>
+        </div>
+      </div>
+      <div class="how-badges">
+        <div class="how-badge">
+          <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Under 5 min
+        </div>
+        <div class="how-badge">
+          <svg viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Encrypted
+        </div>
+        <div class="how-badge">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8z"/></svg>
+          Full Report
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DETECTS -->
+  <section class="detects">
+    <div class="section-eyebrow" style="display:inline-flex; margin-bottom:14px;">
+      <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Detection Engine
+    </div>
+    <h2>What <span>HIPAAGuard</span> Detects</h2>
+    <p class="section-sub">Tap any category to learn what we detect, why it matters, and how to fix it.</p>
+    <div class="detect-grid">
+      <div class="detect-item" data-detect="faces" tabindex="0" role="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span>Faces</span>
+      </div>
+      <div class="detect-item" data-detect="records" tabindex="0" role="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>Records</span>
+      </div>
+      <div class="detect-item" data-detect="audio" tabindex="0" role="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <span>Audio</span>
+      </div>
+      <div class="detect-item" data-detect="text" tabindex="0" role="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        <span>Text</span>
+      </div>
+      <div class="detect-item" data-detect="screens" tabindex="0" role="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>Screens</span>
+      </div>
+      <div class="detect-item" data-detect="ids" tabindex="0" role="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg>
+        <span>IDs &amp; Labels</span>
+      </div>
+    </div>
+    <p class="detect-tap-hint">
+      Tap any card to see detection details
+    </p>
+  </section>
+
+  <!-- DETECT POPUP (bottom sheet) -->
+  <div class="detect-popup-overlay" id="detect-popup-overlay" role="dialog" aria-modal="true">
+    <div class="detect-popup" id="detect-popup">
+      <div class="detect-popup-handle"></div>
+      <button class="detect-popup-close" id="detect-popup-close" aria-label="Close">✕</button>
+      <div class="detect-popup-icon" id="detect-popup-icon"></div>
+      <h3 id="detect-popup-title"></h3>
+      <div class="popup-section-label">Why It Matters</div>
+      <p class="detect-popup-why" id="detect-popup-why"></p>
+      <div class="popup-section-label">Example Violations</div>
+      <div class="detect-popup-violations" id="detect-popup-violations"></div>
+      <div class="popup-section-label">How We Detect It</div>
+      <div class="detect-popup-method" id="detect-popup-method"></div>
+      <div class="popup-section-label">Recommended Fixes</div>
+      <div class="detect-popup-fixes" id="detect-popup-fixes"></div>
+    </div>
+  </div>
+
+  <!-- COMPLIANCE IMPORTANCE -->
+  <section class="compliance-section">
+    <div class="section-eyebrow" style="display:inline-flex; margin-bottom:14px; background: rgba(255,255,255,0.15); color:white;">
+      <svg viewBox="0 0 24 24" stroke-width="2" style="stroke:white;"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+      HIPAA Compliance Matters
+    </div>
+    <h2>The Cost of a HIPAA Video Violation</h2>
+    <p class="section-sub">Most violations happen by accident. Understanding what's at stake helps practices take compliance seriously — before something goes wrong.</p>
+    <div class="compliance-grid">
+      <div class="compliance-card">
+        <div class="compliance-card-icon">💰</div>
+        <div class="stat">$100–$50K</div>
+        <h4>Financial Penalties</h4>
+        <p>Per violation, with annual caps reaching $1.9M for repeated violations of the same provision.</p>
+      </div>
+      <div class="compliance-card">
+        <div class="compliance-card-icon">🏥</div>
+        <div class="stat">Years</div>
+        <h4>Reputation Damage</h4>
+        <p>A publicized HIPAA incident can affect patient trust and referrals long after the content is removed.</p>
+      </div>
+      <div class="compliance-card">
+        <div class="compliance-card-icon">🤝</div>
+        <div class="stat">Erodes</div>
+        <h4>Patient Trust</h4>
+        <p>Patients expect their information to be protected. Accidental exposure can permanently damage that relationship.</p>
+      </div>
+      <div class="compliance-card">
+        <div class="compliance-card-icon">🔍</div>
+        <div class="stat">Ongoing</div>
+        <h4>Regulatory Scrutiny</h4>
+        <p>OCR investigations often extend beyond the initial complaint, reviewing broader practices and historical content.</p>
+      </div>
+    </div>
+    <button class="cta-btn" style="margin: 0 auto; max-width:320px; background:white; color:var(--purple);" onclick="document.getElementById('lead-form').scrollIntoView({behavior:'smooth'})">
+      <svg viewBox="0 0 24 24" stroke-width="2" style="stroke:var(--purple);"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Check My HIPAA Risk Score
+    </button>
+    <div style="margin-top:12px; display:flex; gap:14px; justify-content:center; flex-wrap:wrap;">
+      <span style="font-size:12px; color:rgba(255,255,255,0.65); display:flex; align-items:center; gap:4px;"><span style="color:#68D391; font-weight:700;">✓</span> No credit card required</span>
+      <span style="font-size:12px; color:rgba(255,255,255,0.65); display:flex; align-items:center; gap:4px;"><span style="color:#68D391; font-weight:700;">✓</span> First scan free</span>
+    </div>
+  </section>
+
+  <!-- SECURITY & PRIVACY -->
+  <section class="security-section">
+    <div class="section-header">
+      <div class="section-eyebrow" style="display:inline-flex; margin-bottom:14px;">
+        <svg viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Security &amp; Privacy
+      </div>
+      <h2>Your Video <span>Stays Private</span></h2>
+      <p style="font-size:14px; color:var(--gray); margin-top:8px; max-width:340px; margin-left:auto; margin-right:auto; line-height:1.6;">HIPAAGuard is built around healthcare-grade privacy. Every step of processing is designed to protect your content and your patients.</p>
+    </div>
+    <div class="security-grid">
+      <div class="security-card">
+        <div class="security-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h4>Encrypted Processing</h4>
+        <p>All video data is encrypted in transit and at rest. TLS 1.3 on all connections.</p>
+      </div>
+      <div class="security-card">
+        <div class="security-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+        <h4>Secure File Handling</h4>
+        <p>Videos are processed in isolated environments. No content is shared between accounts.</p>
+      </div>
+      <div class="security-card">
+        <div class="security-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+        </div>
+        <h4>Private Workflows</h4>
+        <p>No training on your data. No third-party data sharing. Your content is never used to improve our models.</p>
+      </div>
+      <div class="security-card">
+        <div class="security-card-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+        </div>
+        <h4>Healthcare-Focused</h4>
+        <p>Designed specifically for the privacy standards required in healthcare — not adapted from a general-purpose tool.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq-section">
+    <div class="section-header">
+      <div class="section-eyebrow" style="display:inline-flex; margin-bottom:14px;">
+        <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        FAQ
+      </div>
+      <h2>Common <span>Questions</span></h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q">
+          <span>How long does a scan take?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="faq-a">Most scans complete in 2–5 minutes depending on video length and complexity. You'll receive a full timestamped report as soon as the scan is complete — no waiting around.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">
+          <span>Do you store my videos?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="faq-a">No. Videos are processed in isolated, temporary environments and deleted immediately after your report is generated. We do not retain video files, and we do not use your content to train any models.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">
+          <span>Is this legal advice?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="faq-a">No. HIPAAGuard is a compliance screening tool, not a legal or regulatory advisory service. Our reports identify potential HIPAA risk indicators in your video content. For specific legal guidance, consult a qualified healthcare attorney or compliance officer.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">
+          <span>Can I scan unpublished or draft content?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="faq-a">Yes — and that's exactly when you should scan. HIPAAGuard is designed to be used before you publish. Uploading raw or draft footage gives you the opportunity to address compliance issues before they ever reach a public platform.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">
+          <span>Who is HIPAAGuard for?</span>
+          <svg class="faq-chevron" viewBox="0 0 24 24" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="faq-a">HIPAAGuard is built for U.S. healthcare providers who create video content — physicians, dentists, orthodontists, med spa owners, surgical specialists, and the marketing teams that support them. If your practice posts clinical or educational video content online, HIPAAGuard is for you.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FORM -->
+  <section class="form-section" id="lead-form">
+    <div class="form-icon">
+      <svg viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <h2>Scan My Video —<br><span>Get My Free Report</span></h2>
+    <p class="sub-copy">Join U.S. healthcare practices already protecting their content.</p>
+
+    <div class="form-grid">
+      <div class="field">
+        <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <input type="text" placeholder="Full Name" id="f-name">
+      </div>
+      <div class="field">
+        <svg viewBox="0 0 24 24" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <input type="email" placeholder="Email Address" id="f-email">
+      </div>
+      <div class="field" style="padding: 0; overflow: hidden;">
+        <svg viewBox="0 0 24 24" stroke-width="2" style="width:16px;height:16px;stroke:var(--gray);fill:none;min-width:16px;margin-left:14px;flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3.08 5.18 2 2 0 0 1 5 3h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.72 2.81a2 2 0 0 1-.45 2.11L9.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.36 1.85.6 2.81.72A2 2 0 0 1 22 18v-.08z"/></svg>
+        <select id="f-country-code" onchange="updatePhonePlaceholder()" style="border:none;outline:none;background:transparent;font-family:'Inter',sans-serif;font-size:14px;color:var(--black);cursor:pointer;padding:0 8px 0 6px;height:50px;appearance:none;border-right:1px solid var(--border);min-width:90px;">
+          <option value="+1-us" data-flag="🇺🇸" data-placeholder="(555) 000-0000" data-digits="10">🇺🇸 +1</option>
+          <option value="+1-ca" data-flag="🇨🇦" data-placeholder="(416) 000-0000" data-digits="10">🇨🇦 +1</option>
+          <option value="+44" data-flag="🇬🇧" data-placeholder="07700 000000" data-digits="10">🇬🇧 +44</option>
+          <option value="+61" data-flag="🇦🇺" data-placeholder="0412 000 000" data-digits="9">🇦🇺 +61</option>
+          <option value="+49" data-flag="🇩🇪" data-placeholder="0151 00000000" data-digits="10">🇩🇪 +49</option>
+          <option value="+33" data-flag="🇫🇷" data-placeholder="06 00 00 00 00" data-digits="9">🇫🇷 +33</option>
+          <option value="+91" data-flag="🇮🇳" data-placeholder="98100 00000" data-digits="10">🇮🇳 +91</option>
+          <option value="+other" data-flag="🌐" data-placeholder="Phone Number" data-digits="0">🌐 Other</option>
+        </select>
+        <input type="tel" placeholder="(555) 000-0000" id="f-phone" style="flex:1;border:none;outline:none;font-family:'Inter',sans-serif;font-size:14px;color:var(--black);background:transparent;padding:0 14px 0 10px;height:50px;" oninput="formatPhoneInput(this)">
+      </div>
+      <div id="phone-error" style="display:none;color:var(--red);font-size:12px;font-weight:600;padding:4px 4px 0;text-align:left;">Please enter a valid phone number.</div>
+      <div class="field">
+        <svg viewBox="0 0 24 24" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <input type="text" placeholder="Practice / Clinic Name" id="f-clinic">
+      </div>
+      <div class="field">
+        <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+        <select id="f-specialty">
+          <option value="" disabled selected>Specialty</option>
+          <option>Dermatology</option>
+          <option>Plastic Surgery</option>
+          <option>Med Spa</option>
+          <option>Dentistry</option>
+          <option>Internal Medicine</option>
+          <option>Orthopedics</option>
+          <option>Pediatrics</option>
+          <option>Cardiology</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <svg viewBox="0 0 24 24" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <select id="f-state">
+          <option value="" disabled selected>State</option>
+          <option>Alabama</option><option>Alaska</option><option>Arizona</option>
+          <option>California</option><option>Colorado</option><option>Connecticut</option>
+          <option>Florida</option><option>Georgia</option><option>Illinois</option>
+          <option>New York</option><option>Texas</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="form-submit-btn" id="submit-btn">
+      <svg viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Get My Free Compliance Report
+    </button>
+
+    <div class="form-microcopy">
+      <span>No credit card required</span>
+      <span>First scan free</span>
+      <span>Private &amp; secure</span>
+    </div>
+
+    <div class="privacy-note">
+      <svg viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Your information is secure and will never be shared.
+    </div>
+    <div class="footer-flag">Proudly based in the United States 🇺🇸</div>
+  </section>
+
+</div><!-- end main-content -->
+
+<!-- ── SUCCESS PAGE ── -->
+<div id="success-page">
+  <div class="success-icon">
+    <svg viewBox="0 0 24 24" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>
+  <span class="success-badge">✓ Details Submitted</span>
+  <h2>You're on the list for<br><span>HIPAAGuard</span></h2>
+  <p>We've received your details. You'll be redirected to HIPAAGuard shortly to complete your setup and scan your first video.</p>
+
+  <div class="redirect-bar">
+    <div class="redirect-fill"></div>
+  </div>
+  <p class="redirect-text" id="countdown-text">Redirecting you to HIPAAGuard in 3 seconds…</p>
+
+  <div class="success-details">
+    <h4>What happens next</h4>
+    <div class="detail-row">
+      <svg viewBox="0 0 24 24" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Check your inbox — a confirmation email is on its way.
+    </div>
+    <div class="detail-row">
+      <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+      Your first HIPAA scan will be ready to run immediately.
+    </div>
+    <div class="detail-row">
+      <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Reports are typically delivered within 5 minutes of upload.
+    </div>
+  </div>
+</div>
+
+<!-- ── STICKY BOTTOM CTA ── -->
+<div class="sticky-cta" id="sticky-cta">
+  <button class="sticky-cta-btn" onclick="document.getElementById('lead-form').scrollIntoView({behavior:'smooth'}); document.getElementById('sticky-cta').classList.remove('visible');">
+    <svg viewBox="0 0 24 24" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    Scan My Video — It's Free
+  </button>
+</div>
+
+<script>
+  // ── HAMBURGER / DRAWER ──
+  const hamburger = document.getElementById('hamburger');
+  const drawer = document.getElementById('drawer');
+  const overlay = document.getElementById('drawer-overlay');
+  const drawerClose = document.getElementById('drawer-close');
+
+  function openDrawer() {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+    hamburger.classList.add('open');
+    hamburger.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+    hamburger.classList.remove('open');
+    hamburger.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  }
+
+  hamburger.addEventListener('click', () => drawer.classList.contains('open') ? closeDrawer() : openDrawer());
+  overlay.addEventListener('click', closeDrawer);
+  drawerClose.addEventListener('click', closeDrawer);
+
+  // ── STICKY CTA ──
+  const stickyCta = document.getElementById('sticky-cta');
+  const formSection = document.getElementById('lead-form');
+  let stickyVisible = false;
+
+  window.addEventListener('scroll', () => {
+    const scrollY = window.scrollY;
+    const formTop = formSection.getBoundingClientRect().top + scrollY;
+    const showAt = window.innerHeight * 0.8;
+
+    if (scrollY > showAt && scrollY < formTop - 200) {
+      if (!stickyVisible) { stickyCta.classList.add('visible'); stickyVisible = true; }
+    } else {
+      if (stickyVisible) { stickyCta.classList.remove('visible'); stickyVisible = false; }
+    }
+  }, { passive: true });
+
+  // ── INTERACTIVE DEMO ──
+  let demoRunning = false;
+
+  function startDemo() {
+    if (demoRunning) return;
+    demoRunning = true;
+
+    const box = document.getElementById('demo-box');
+    const idle = document.getElementById('demo-idle');
+    const progress = document.getElementById('demo-progress');
+    const complete = document.getElementById('demo-complete');
+    const btn = document.getElementById('demo-btn');
+
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+
+    idle.style.display = 'none';
+    progress.style.display = 'flex';
+    box.classList.add('scanning');
+
+    // Auto-scroll to demo box
+    setTimeout(() => {
+      box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+
+    const steps = [
+      { id: 'upload', label: 'Uploading…', duration: 1200 },
+      { id: 'audio',  label: 'Analyzing…', duration: 1400 },
+      { id: 'faces',  label: 'Scanning…', duration: 1300 },
+      { id: 'text',   label: 'Checking…', duration: 1100 },
+      { id: 'phi',    label: 'Detecting…', duration: 1200 },
+      { id: 'report', label: 'Generating…', duration: 1000 },
+    ];
+
+    let elapsed = 0;
+    steps.forEach((step, i) => {
+      setTimeout(() => {
+        // Mark previous as done
+        if (i > 0) {
+          const prevEl = document.getElementById('step-' + steps[i-1].id);
+          const prevStatus = document.getElementById('status-' + steps[i-1].id);
+          prevEl.classList.remove('active');
+          prevEl.classList.add('complete');
+          prevStatus.textContent = '✓';
+          prevStatus.className = 'demo-step-status done';
+        }
+        // Activate current
+        const el = document.getElementById('step-' + step.id);
+        const status = document.getElementById('status-' + step.id);
+        el.classList.add('active');
+        status.innerHTML = '<div class="demo-spinner"></div>';
+        status.className = 'demo-step-status active';
+        status.style.display = 'flex';
+        status.style.alignItems = 'center';
+      }, elapsed);
+      elapsed += step.duration;
+    });
+
+    // Final completion
+    setTimeout(() => {
+      const lastStep = document.getElementById('step-report');
+      const lastStatus = document.getElementById('status-report');
+      lastStep.classList.remove('active');
+      lastStep.classList.add('complete');
+      lastStatus.textContent = '✓';
+      lastStatus.className = 'demo-step-status done';
+
+      setTimeout(() => {
+        progress.style.display = 'none';
+        complete.style.display = 'flex';
+        box.classList.remove('scanning');
+        box.classList.add('done');
+
+        btn.textContent = '';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.innerHTML = `<svg viewBox="0 0 24 24" stroke-width="2" style="width:18px;height:18px;stroke:white;fill:none;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Get My Free Report`;
+        btn.onclick = () => document.getElementById('lead-form').scrollIntoView({ behavior: 'smooth' });
+        demoRunning = false;
+      }, 600);
+    }, elapsed);
+  }
+
+  // ── DETECT POPUPS (enhanced) ──
+  const detectData = {
+    faces: {
+      title: 'Patient Faces',
+      icon: '<svg viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+      why: 'Under HIPAA, a patient\'s face is a direct identifier. Publishing a video that includes a recognizable patient face — even partially, in the background, or in a reflection — without explicit written authorization can constitute a reportable breach.',
+      violations: ['Unblurred patient visible in background during filming', 'Reflection of a patient in a mirror or glass surface', 'Patient partially in frame at edge of shot', 'Before/after photos included in a video without consent'],
+      method: 'HIPAAGuard uses frame-by-frame facial detection to identify every recognizable face in your video, including partial faces, background individuals, and faces captured in reflections or on other screens.',
+      fixes: ['Apply facial blur to all unrecognized or unconsented individuals', 'Reframe or refilm to exclude patients from background', 'Obtain explicit written video authorization before including any patient face', 'Review reflective surfaces before filming']
+    },
+    records: {
+      title: 'Medical Records',
+      icon: '<svg viewBox="0 0 24 24" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+      why: 'Physical or digital medical records visible on camera are among the most serious HIPAA exposure risks. Charts, printouts, prescriptions, lab results, and EHR printouts all contain PHI that can be read and captured in video.',
+      violations: ['Patient chart visible on desk or counter during filming', 'Printed lab results or prescriptions in frame', 'X-rays or imaging displayed on a lightbox in background', 'Specimen labels or pathology reports in shot'],
+      method: 'Our engine uses optical character recognition (OCR) combined with document detection to identify medical record formats and flag documents that may contain protected health information.',
+      fixes: ['Clear all patient documents from filming area before recording', 'Face documents away from camera or place face-down', 'Use a clean, document-free background for clinical videos', 'Review the full frame before starting recording']
+    },
+    audio: {
+      title: 'Audio & PHI Speech',
+      icon: '<svg viewBox="0 0 24 24" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
+      why: 'Spoken PHI is frequently overlooked because it\'s harder to notice during filming. Patient names, diagnoses, dates of birth, medication details, or case discussions captured on audio are just as protected as written records.',
+      violations: ['Saying a patient\'s name aloud while on camera', 'Discussing a recent case with identifying details', 'Staff calling out a patient name in the background', 'Mentioning a specific diagnosis or treatment in context'],
+      method: 'HIPAAGuard transcribes your video\'s audio and runs the transcript through PHI detection models trained on the 18 HIPAA identifier categories, flagging specific timestamps where PHI may have been spoken.',
+      fixes: ['Script your audio in advance and review for any identifying language', 'Re-record voiceover in a controlled environment', 'Mute or bleep specific segments containing PHI', 'Ensure no staff conversations are audible in background']
+    },
+    text: {
+      title: 'On-Screen Text',
+      icon: '<svg viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>',
+      why: 'Captions, lower thirds, text overlays, and graphics added during editing can inadvertently include PHI — especially when auto-generated captions are used or when practice management data is pulled into graphics.',
+      violations: ['Auto-generated caption incorrectly transcribes a patient name', 'Lower third includes a real patient\'s name or DOB', 'Text overlay contains a medical record number or case ID', 'Graphic includes identifiable treatment details'],
+      method: 'HIPAAGuard reads all rendered text in every video frame using OCR, identifies text overlays and captions, and checks the content against PHI pattern libraries.',
+      fixes: ['Review all captions and text overlays before export', 'Use placeholder names (e.g., "Patient A") in any graphic', 'Disable or manually review auto-caption output', 'Avoid including real case data in motion graphics']
+    },
+    screens: {
+      title: 'Screens & Monitors',
+      icon: '<svg viewBox="0 0 24 24" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+      why: 'EHR dashboards, patient portals, and computer monitors in a clinical setting often display live patient data. Even a brief glimpse of an unlocked workstation can expose dozens of patient records.',
+      violations: ['EHR system visible and unlocked in background', 'Patient scheduling system visible on a front desk monitor', 'Tablet or phone showing a patient record during filming', 'Workstation with patient data not in camera-safe state'],
+      method: 'HIPAAGuard detects screens in the video frame and analyzes the content visible on them, flagging screens that appear to show data entry interfaces, EHR-style layouts, or patient scheduling views.',
+      fixes: ['Lock all workstations before filming begins', 'Use screen privacy filters in filming areas', 'Position camera angles to exclude monitors', 'Use a dedicated filming space free of clinical workstations']
+    },
+    ids: {
+      title: 'IDs & Labels',
+      icon: '<svg viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg>',
+      why: 'Patient wristbands, ID badges, specimen labels, and printed labels in a clinical environment routinely carry name, DOB, MRN, and other direct identifiers. These are easy to miss during filming because they\'re small and common in clinical spaces.',
+      violations: ['Patient wristband visible on arm during procedure video', 'Specimen cup or vial with patient label in frame', 'ID badge from another patient visible in background', 'Printed pharmacy label on medication bottle in shot'],
+      method: 'HIPAAGuard uses object detection to identify wristbands, labels, and ID-format objects in each frame, then applies OCR to check for readable identifying information on their surfaces.',
+      fixes: ['Remove or cover wristbands before filming', 'Keep specimen and medication areas out of frame', 'Review all props and surfaces for patient labels before recording', 'Use a filming checklist to verify the environment is label-free']
+    }
+  };
+
+  const detectItems = document.querySelectorAll('.detect-item');
+  const popupOverlay = document.getElementById('detect-popup-overlay');
+  const popupClose = document.getElementById('detect-popup-close');
+  const popupIcon = document.getElementById('detect-popup-icon');
+  const popupTitle = document.getElementById('detect-popup-title');
+  const popupWhy = document.getElementById('detect-popup-why');
+  const popupViolations = document.getElementById('detect-popup-violations');
+  const popupMethod = document.getElementById('detect-popup-method');
+  const popupFixes = document.getElementById('detect-popup-fixes');
+
+  function openDetectPopup(item) {
+    const data = detectData[item.dataset.detect];
+    if (!data) return;
+
+    item.classList.add('tapped');
+    setTimeout(() => item.classList.remove('tapped'), 350);
+
+    popupIcon.innerHTML = data.icon;
+    popupTitle.textContent = data.title;
+    popupWhy.textContent = data.why;
+
+    popupViolations.innerHTML = data.violations.map(v =>
+      `<div class="detect-popup-violation-item">${v}</div>`
+    ).join('');
+
+    popupMethod.textContent = data.method;
+
+    popupFixes.innerHTML = data.fixes.map(f => `
+      <div class="detect-popup-fix">
+        <div class="detect-popup-fix-icon">
+          <svg viewBox="0 0 24 24" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span>${f}</span>
+      </div>
+    `).join('');
+
+    popupIcon.style.animation = 'none';
+    void popupIcon.offsetWidth;
+    popupIcon.style.animation = '';
+
+    popupOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDetectPopup() {
+    popupOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  detectItems.forEach(item => {
+    item.addEventListener('click', () => openDetectPopup(item));
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetectPopup(item); }
+    });
+  });
+
+  popupClose.addEventListener('click', closeDetectPopup);
+  popupOverlay.addEventListener('click', (e) => { if (e.target === popupOverlay) closeDetectPopup(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDetectPopup(); });
+
+  // Touch swipe down to close popup
+  let touchStartY = 0;
+  document.getElementById('detect-popup').addEventListener('touchstart', (e) => {
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  document.getElementById('detect-popup').addEventListener('touchend', (e) => {
+    if (e.changedTouches[0].clientY - touchStartY > 60) closeDetectPopup();
+  }, { passive: true });
+
+  // ── FAQ ──
+  document.querySelectorAll('.faq-q').forEach(q => {
+    q.addEventListener('click', () => {
+      const item = q.parentElement;
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+      if (!isOpen) item.classList.add('open');
+    });
+  });
+
+  // ── PHONE VALIDATION ──
+  function updatePhonePlaceholder() {
+    const sel = document.getElementById('f-country-code');
+    const opt = sel.options[sel.selectedIndex];
+    const ph = document.getElementById('f-phone');
+    ph.placeholder = opt.dataset.placeholder;
+    ph.value = '';
+    document.getElementById('phone-error').style.display = 'none';
+  }
+
+  function formatPhoneInput(input) {
+    const sel = document.getElementById('f-country-code');
+    const opt = sel.options[sel.selectedIndex];
+    const val = opt.value;
+    // Only auto-format US/Canada
+    if (val === '+1-us' || val === '+1-ca') {
+      let digits = input.value.replace(/\D/g, '').slice(0, 10);
+      if (digits.length >= 7) {
+        input.value = '(' + digits.slice(0,3) + ') ' + digits.slice(3,6) + '-' + digits.slice(6);
+      } else if (digits.length >= 4) {
+        input.value = '(' + digits.slice(0,3) + ') ' + digits.slice(3);
+      } else if (digits.length > 0) {
+        input.value = '(' + digits;
+      }
+    }
+    document.getElementById('phone-error').style.display = 'none';
+  }
+
+  function validatePhone() {
+    const sel = document.getElementById('f-country-code');
+    const opt = sel.options[sel.selectedIndex];
+    const phone = document.getElementById('f-phone').value.trim();
+    const digits = phone.replace(/\D/g, '');
+    const minDigits = parseInt(opt.dataset.digits) || 0;
+    if (minDigits === 0) return true; // "Other" — skip strict validation
+    return digits.length >= minDigits;
+  }
+
+
+  const submitBtn = document.getElementById('submit-btn');
+  const mainContent = document.getElementById('main-content');
+  const successPage = document.getElementById('success-page');
+
+  submitBtn.addEventListener('click', () => {
+    const name = document.getElementById('f-name').value.trim();
+    const email = document.getElementById('f-email').value.trim();
+
+    if (!name) { alert('Please enter your full name.'); return; }
+    if (!email || !email.includes('@')) { alert('Please enter a valid email address.'); return; }
+    if (!validatePhone()) {
+      document.getElementById('phone-error').style.display = 'block';
+      document.getElementById('f-phone').focus();
+      return;
+    }
+
+    mainContent.classList.add('hide');
+    successPage.classList.add('show');
+    stickyCta.classList.remove('visible');
+    window.scrollTo(0, 0);
+
+    let count = 3;
+    const countdownEl = document.getElementById('countdown-text');
+
+    const interval = setInterval(() => {
+      count--;
+      if (count > 0) {
+        countdownEl.textContent = `Redirecting you to HIPAAGuard in ${count} second${count > 1 ? 's' : ''}…`;
+      } else {
+        clearInterval(interval);
+        countdownEl.textContent = 'Redirecting now…';
+        setTimeout(() => {
+          countdownEl.innerHTML = '✓ You\'ve been added to HIPAAGuard. <strong>Welcome!</strong>';
+        }, 800);
+      }
+    }, 1000);
+  });
+</script>
+</body>
+</html>
